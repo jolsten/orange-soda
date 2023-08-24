@@ -1,86 +1,88 @@
 import pathlib
 import re
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field
+from typing_extensions import TypedDict, NotRequired, Required
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from .typing import PathLike, YYMMDD, MMDDYY, HHMMSS, ByteOrder, Frequency
 from .parser import parse_labelfile
 
 
-class Section(BaseModel):
+class Section(TypedDict):
     pass
 
 
 class FileMeta(BaseModel):
     path: Optional[PathLike] = None
-    indent: int = 10
+    indent: Optional[int] = 10
 
 
 class Volume(Section):
-    classification: Optional[str] = None
-    number: Optional[int] = None
-    creation: Optional[MMDDYY] = None
-    byte: Optional[ByteOrder] = None
+    classification: NotRequired[str]
+    number: NotRequired[int]
+    creation: NotRequired[MMDDYY]
+    byte: NotRequired[ByteOrder]
 
 
 class File(Section):
-    classification: Optional[str] = None
-    number: Optional[int] = None
-    creation: Optional[MMDDYY] = None
-    block: Optional[int] = None
-    rbpl: Optional[int] = None
-    rbrp: Optional[int] = None
+    classification: Optional[str]
+    number: NotRequired[int]
+    creation: NotRequired[MMDDYY]
+    block: NotRequired[int]
+    rbpl: NotRequired[int]
+    rbrp: NotRequired[int]
+
+FileValidator = TypeAdapter(File)
 
 
 class Event(Section):
-    vehicle: Optional[str] = None
-    date: Optional[YYMMDD] = None
-    sput: Optional[str] = None
-    orbit: Optional[int] = None
-    type: Optional[str] = None
+    vehicle: NotRequired[str]
+    date: NotRequired[YYMMDD]
+    sput: NotRequired[str]
+    orbit: NotRequired[int]
+    type: NotRequired[str]
 
 
 class Signal(Section):
-    designator: Optional[str] = None
-    frequency: Optional[Frequency] = None
-    uptime: Optional[HHMMSS] = None
-    downtime: Optional[HHMMSS] = None
+    designator: NotRequired[str]
+    frequency: NotRequired[Frequency]
+    uptime: NotRequired[HHMMSS]
+    downtime: NotRequired[HHMMSS]
 
 
 class Input(Section):
-    collector: Optional[str] = None
-    analog: Optional[str] = None
+    collector: NotRequired[str]
+    analog: NotRequired[str]
 
 
 class Selector(Section):
-     number: Optional[int] = None
+     number: NotRequired[int]
 
 
 class Processor(Section):
-    name: Optional[str] = None
-    version: Optional[str] = None
-    type: Optional[str] = None
-    channels: Optional[int] = None
-    nominal: Optional[int] = None
-    rate: Optional[float] = None
+    name: NotRequired[str]
+    version: NotRequired[str]
+    type: NotRequired[str]
+    channels: NotRequired[int]
+    nominal: NotRequired[int]
+    rate: NotRequired[float]
 
 
-class Record(BaseModel):
-    rrln: Optional[int] = None
-    rrpl: Optional[int] = None
-    word: Optional[int] = None
-    rdpl: Optional[int] = None
-    rdrc: Optional[int] = None
-    rdid: Optional[int] = None
-    rdes: Optional[int] = None
-    rdst: Optional[int] = None
-    rdin: Optional[int] = None
-    auxiliary: Optional[str] = None
+class Record(Section):
+    word: NotRequired[int]
+    rrln: NotRequired[int]
+    rrpl: NotRequired[int]
+    rdpl: NotRequired[int]
+    rdrc: NotRequired[int]
+    rdid: NotRequired[int]
+    rdes: NotRequired[int]
+    rdst: NotRequired[int]
+    rdin: NotRequired[int]
+    auxiliary: NotRequired[str]
 
 
 class Output(Section):
-     type: Optional[str] = None
+     type: NotRequired[str]
 
-_INDENT_FINDER = re.compile(r'^(\S+\s+)\S')
 
 class LabelFile(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -102,12 +104,7 @@ class LabelFile(BaseModel):
     def from_text(cls, text: str) -> "LabelFile":
         obj = parse_labelfile(text)
         lf = cls(**obj)
-
-        indent = None
-        if m := _INDENT_FINDER.match(text):
-            indent = len(m.groups()[0])
-        lf.meta.indent = indent
-
+        lf.meta.indent = text.find(text.split(maxsplit=1)[1])
         return lf
 
     @classmethod
