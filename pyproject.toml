@@ -28,6 +28,7 @@ dev = [
   "wheel",
   "pytest",
   "pytest-cov",
+  "hypothesis",
 ]
 
 [tool.setuptools]
@@ -37,7 +38,7 @@ packages = ["orangesoda"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--cov=typeconvert --cov-report html"
+addopts = "--cov=orangesoda --cov-report html"
 testpaths = [
     "tests",
 ]
