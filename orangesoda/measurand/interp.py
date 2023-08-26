@@ -15,22 +15,14 @@ from .types.ufunc import (
 )
 
 
-from typing import ClassVar, Annotated
+from typing import ClassVar, Dict
 from pydantic import Field, BaseModel, AfterValidator, FieldValidationInfo, field_validator, PrivateAttr
-
+from .factory import ObjectFactory
 
 class InterpStrategy(ABC):
-    @abstractproperty
-    def __name__(self) -> str:
-        ...
-
     @abstractmethod
     def apply_ndarray(self, data: np.ndarray, bits: int) -> np.ndarray:
         ...
-    
-    #@abstractmethod
-    #def apply_pyarrow(self, data, bits: int):
-    #    ...
 
 
 class InvalidInterpType(ValueError):
@@ -55,29 +47,29 @@ class InvalidInterpSize(ValueError):
         return self.msg
 
 
-class Unsigned(InterpStrategy):
-    __name__ = 'u'
+interp = ObjectFactory()
 
+
+@interp.register('u')
+class Unsigned(InterpStrategy):
     def apply_ndarray(self, data: np.ndarray, bits: int) -> np.ndarray:
         return data
 
 
+@interp.register('1c')
 class OnesComplement(InterpStrategy):
-    __name__ = '1c'
-
     def apply_ndarray(self, data: np.ndarray, bits: int) -> np.ndarray:
         return onescomp(data, bits)
 
 
+@interp.register('2c')
 class TwosComplement(InterpStrategy):
-    __name__ = '2c'
-    
     def apply_ndarray(self, data: np.ndarray, bits: int) -> np.ndarray:
         return twoscomp(data, bits)
 
 
+@interp.register('ieee16')
 class IEEE16(InterpStrategy):
-    __name__ = 'ieee16'
     SIZE = 16
 
     def apply_ndarray(self, data: np.ndarray, bits: int) -> np.ndarray:
@@ -86,6 +78,7 @@ class IEEE16(InterpStrategy):
         return data.view('>f2')
 
 
+@interp.register('ieee32')
 class IEEE32(InterpStrategy):
     __name__ = 'ieee32'
     SIZE = 32
@@ -96,6 +89,7 @@ class IEEE32(InterpStrategy):
         return data.view('>f4')
 
 
+@interp.register('ieee64')
 class IEEE64(InterpStrategy):
     __name__ = 'ieee64'
     SIZE = 64
@@ -196,62 +190,67 @@ class DEC64G(InterpStrategy):
         return dec64g(data)
 
 
-_STRATEGIES = {
-    'u': Unsigned,
-    '1c': OnesComplement,
-    '2c': TwosComplement,
-    'ieee16': IEEE16,
-    'ieee32': IEEE32,
-    'ieee64': IEEE64,
-    '1750a32': MilStd1750A32,
-    '1750a48': MilStd1750A48,
-    'ti32': TI32,
-    'ti40': TI40,
-    'ibm32': IBM32,
-    'ibm64': IBM64,
-    'dec32': DEC32,
-    'dec64': DEC64,
-    'dec64g': DEC64G,
-}
+#  interp = ObjectFactory()
+#  interp.register('u', Unsigned)
+#  interp.register('1c', OnesComplement)
+#  interp.register('2c', TwosComplement)
+#  interp.register('ieee16', IEEE16)
+#  interp.register('ieee32', IEEE32)
+#  interp.register('ieee64', IEEE64)
+#  interp.register('1750a32', MilStd1750A32)
+#  interp.register('1750a48', MilStd1750A48)
+#  interp.register('ti32', TI32)
+#  interp.register('ti40', TI40)
+#  interp.register('ibm32', IBM32)
+#  interp.register('ibm64', IBM64)
+#  interp.register('dec32', DEC32)
+#  interp.register('dec64', DEC64)
+#  interp.register('dec64g', DEC64G)
 
-class Interp:
-    def __init__(
-            self, spec: str,
-        ) -> None:
-        self.spec = spec.lower()
-        if self.spec not in _STRATEGIES.keys():
-            raise InvalidInterpType
-        self.strategy: InterpStrategy = _STRATEGIES[self.spec]()
+
+# class Interp:
+#     _builders = {}
+
+#     def __init__(
+#             self, spec: str,
+#         ) -> None:
+#         cls = self.__class__
+#         self.spec = spec.lower()
+#         self.builder: InterpStrategy = cls.create(self.spec)
     
-    def apply(self, data: np.ndarray, bits: int) -> np.ndarray:
-        return self.strategy.apply_ndarray(data, bits)
-
-    def __eq__(self, other) -> bool:
-        return isinstance(other.strategy, type(self.strategy))
+#     @classmethod
+#     def create(cls, alias: str) -> InterpStrategy:
 
 
-class Interp(BaseModel): 
-    spec: str
-    _strategies: ClassVar[dict] = PrivateAttr(default_factory=dict)
+#     @classmethod
+#     def register(cls, builder: InterpStrategy, alias: str) -> InterpStrategy:
+#         assert alias not in cls._builders
+#         cls._builders[alias] = builder
+#         return cls
 
-    @classmethod
-    def register(cls, strategy: "InterpStrategy") -> None:
-        if not hasattr(cls, '_strategies'):
-            setattr(cls, '_strategies', {})
-        cls._strategies[strategy.__name__] = strategy
+
+# class Interp(MeasurandModifier): 
+#     spec: str
+#     _strategies: ClassVar[dict] = PrivateAttr(default_factory=dict)
+
+#     @classmethod
+#     def register(cls, strategy: "InterpStrategy") -> None:
+#         if not hasattr(cls, '_strategies'):
+#             setattr(cls, '_strategies', {})
+#         cls._strategies[strategy.__name__] = strategy
     
-    @field_validator('spec')
-    @classmethod
-    def validate_spec(cls, v: str, info: FieldValidationInfo) -> str:
-        valid = v in cls._strategies
-        valid_strats = list(cls._strategies.keys())
-        assert valid, f'{info.field_name} must be a registered strategy: {valid_strats}'
+#     @field_validator('spec')
+#     @classmethod
+#     def validate_spec(cls, v: str, info: FieldValidationInfo) -> str:
+#         valid = v in cls._strategies
+#         valid_strats = list(cls._strategies.keys())
+#         assert valid, f'{info.field_name} must be a registered strategy: {valid_strats}'
 
-    def __eq__(self, other) -> bool:
-        return isinstance(other.strategy, type(self.strategy))
+#     def __eq__(self, other) -> bool:
+#         return isinstance(other.strategy, type(self.strategy))
 
-    def apply(self, data: np.ndarray, bits: int) -> np.ndarray:
-        return self.strategy.apply_ndarray(data, bits)
+#     def apply(self, data: np.ndarray, bits: int) -> np.ndarray:
+#         return self.strategy.apply_ndarray(data, bits)
     
-Interp.register(Unsigned)
-Interp.register(TwosComplement)
+# Interp.register(Unsigned)
+# Interp.register(TwosComplement)
