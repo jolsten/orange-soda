@@ -1,12 +1,24 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, List
+from typing import Iterable, Optional, Dict, List, Tuple
 from queue import Queue, Empty as EmptyQueue
 import weakref
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, PrivateAttr
 from .models import DataUnit, Frame, SubFrame
 from .typing import StreamProcessorName
 
 registry = weakref.WeakValueDictionary()
+
+
+def get_all(queue: Queue) -> List[DataUnit]:
+    items = []
+    while True
+        try:
+            item = queue.get_nowait()
+        except EmptyQueue:
+            break
+        else:
+            items.append(item)
+    return items
 
 
 def get_stream_processor(name: str) -> "StreamProcessor":
@@ -16,7 +28,8 @@ def get_stream_processor(name: str) -> "StreamProcessor":
 class StreamProcessor(BaseModel):
     model_config: ConfigDict = ConfigDict(arbitrary_types_allowed=True)
     name: StreamProcessorName
-    queue: Queue = Field(default_factory=Queue)
+    _input: Queue = PrivateAttr(default_factory=Queue)
+    _output: Queue = PrivateAttr(default_factory=Queue)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -25,12 +38,21 @@ class StreamProcessor(BaseModel):
         if name := kwargs.get("name"):
             registry[name] = self
 
-    @abstractmethod
-    def consume(self, input: DataUnit) -> None:
-        ...
+    def add(self, item: DataUnit) -> None:
+        self._input.put(item)
 
-    def supply(self) -> DataUnit:
-        return self.queue.get_nowait()
+    def add_all(self, items: Iterable[DataUnit]) -> None:
+        for item in items:
+            self.add(item)
+
+    def get(self) -> DataUnit:
+        self._output.get_nowait()
+    
+    def get_all(self) -> List[DataUnit]:
+        return get_all(self._output)
+
+    def process(self) -> None:
+        ...
 
     def __div__(self, other: "StreamProcessor") -> "CompoundStreamProcessor":
         comp1 = isinstance(self, CompoundStreamProcessor)
@@ -53,46 +75,39 @@ class StreamProcessor(BaseModel):
 class CompoundStreamProcessor(StreamProcessor):
     processors: List["StreamProcessor"] = Field(default_factory=list)
 
-    def consume(self, input: DataUnit) -> None:
-        self.processors[0].consume(input)
+    def process(self) -> None:
+        # Get the inputs to the compound processor
+        items = get_all(self._input)
 
-        for idx in range(len(self.processors) - 1):
-            proc1 = self.processors[idx]
-            proc2 = self.processors[idx + 1]
+        for proc in self.processors:
+            # Feed the inputs into the processor
+            proc.add_all(items)
+            
+            # Run the processor on the current batch
+            proc.process()
 
-            while True:
-                try:
-                    data = proc1.supply()
-                except EmptyQueue:
-                    break
-                else:
-                    proc2.consume(data)
-        while True:
-            try:
-                data = self.processors[-1].supply()
-            except EmptyQueue:
-                break
-            else:
-                self.queue.put(data)
+            # Get outputs to use as next step's inputs
+            items = get_all(proc._output)
 
+        for item in items:
+            self._output.put(item)
 
-class Decommutator(StreamProcessor):
+class Decom(StreamProcessor):
     sync: str
     mapping: Optional[Dict[int, int]] = None
 
-    def consume(self, frame: Frame) -> None:
+    def process(self) -> None:
         sfid = 0
-        subframe = SubFrame(
-            sequence=frame.sequence,
-            c_time=frame.c_time,
-            p_time=frame.p_time,
-            data=frame.data,
-            sfid=sfid,
-        )
-        self.queue.put(subframe)
+        for frame in self.get_all():
+            subframe = SubFrame(
+                sequence=frame.sequence,
+                c_time=frame.c_time,
+                p_time=frame.p_time,
+                data=frame.data,
+                sfid=sfid,
+            )
+            self._output.put(subframe)
 
-    def supply(self) -> SubFrame:
-        return super().supply()
 
 
 # Rebuild model to convert quoted "TypeName" to "real" ones
