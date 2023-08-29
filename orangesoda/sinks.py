@@ -14,7 +14,7 @@ class DataSink(StreamProcessor):
 class StdoutPrinter(DataSink):
     def process(self) -> None:
         for item in get_all(self._input):
-            print(item)
+            print(item.c_time, item.data.tolist())
 
 
 class FileWriter(DataSink):
@@ -27,4 +27,4 @@ class FileWriter(DataSink):
 
     def process(self) -> None:
         for item in get_all(self._input):
-            print(item, file=self._fh)
+            print(item.c_time, item.data.tolist(), file=self._fh)

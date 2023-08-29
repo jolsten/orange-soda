@@ -1,6 +1,6 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 import weakref
-from pydantic import Field, FilePath, PrivateAttr
+from pydantic import BaseModel, Field, FilePath, PrivateAttr
 from .base import StreamProcessor, DataUnit, Frame, SubFrame, Packet
 from .utils import get_all
 
@@ -13,21 +13,22 @@ class NoOp(StreamProcessor):
             self.output(item)
 
 
-class Decom(StreamProcessor):
-    sync: str
+class FrameFilter(StreamProcessor):
+    pass_func: Callable[[Frame], bool]
     mapping: Optional[Dict[int, int]] = None
 
     INPUT_TYPE = Frame
-    OUTPUT_TYPE = SubFrame
+    OUTPUT_TYPE = Frame
 
     def process(self) -> None:
-        sfid = 0
-        for frame in self.get_all():
-            subframe = SubFrame(
-                sequence=frame.sequence,
-                c_time=frame.c_time,
-                p_time=frame.p_time,
-                data=frame.data,
-                sfid=sfid,
-            )
-            self._output.put(subframe)
+        for frame in get_all(self._input):
+            if self.pass_func(frame):
+                self.output(frame)
+
+
+class CheckSingleByte(BaseModel):
+    byte: int
+    value: int
+
+    def __call__(self, frame: Frame) -> bool:
+        return frame.data[self.byte] == self.value
