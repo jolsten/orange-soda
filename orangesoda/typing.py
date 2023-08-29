@@ -4,11 +4,11 @@ from pydantic import PlainSerializer
 from typing import Annotated
 
 
-def validate_uint32(value) -> np.uint64:
+def validate_uint32(value) -> np.uint32:
     return np.uint32(value)
 
 
-def serialize_uint32(value: np.uint64) -> int:
+def serialize_uint32(value: np.uint32) -> int:
     return int(value)
 
 
