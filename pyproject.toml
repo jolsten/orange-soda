@@ -29,6 +29,8 @@ dev = [
   "pytest",
   "pytest-cov",
   "hypothesis",
+  "jupyter",
+  "nb-js-diagrammers",
 ]
 
 [tool.setuptools]
