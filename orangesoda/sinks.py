@@ -11,13 +11,13 @@ class DataSink(StreamProcessor):
         raise NotImplementedError
 
 
-class StdoutPrinter(DataSink):
+class FramePrinter(DataSink):
     def process(self) -> None:
         for item in get_all(self._input):
             print(item.c_time, item.data.tolist())
 
 
-class FileWriter(DataSink):
+class FrameWriter(DataSink):
     file: FilePath
     _fh = PrivateAttr(default=None)
 

@@ -69,12 +69,13 @@ class StreamProcessor(BaseModel):
     def process(self) -> None:
         ...
 
-    def __div__(self, other: "StreamProcessor") -> "CompoundStreamProcessor":
-        if not isinstance(self.OUTPUT_TYPE, other.INPUT_TYPE):
+    def __truediv__(self, other: "StreamProcessor") -> "StreamProcessor":
+        if not issubclass(self.OUTPUT_TYPE, other.INPUT_TYPE):
             raise TypeError(
                 f"output type {self.OUTPUT_TYPE} does not match input type {other.INPUT_TYPE}"
             )
         self.bind_output_to(other)
+        return other
 
 
 class CompoundStreamProcessor(StreamProcessor):
