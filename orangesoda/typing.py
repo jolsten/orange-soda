@@ -1,7 +1,12 @@
+from typing import Annotated, Union
+
 import numpy as np
-from pydantic import BeforeValidator, AfterValidator
-from pydantic import PlainSerializer
-from typing import Annotated
+from numpy.typing import NDArray
+from pydantic import AfterValidator, BeforeValidator, PlainSerializer
+
+UInt_NDArray = Union[
+    NDArray[np.uint8], NDArray[np.uint16], NDArray[np.uint32], NDArray[np.uint64]
+]
 
 
 def validate_uint32(value) -> np.uint32:
