@@ -1,9 +1,28 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
+import numpy as np
 from numpy.typing import DTypeLike
+from pydantic import BaseModel, Field, model_validator
 
-from orangesoda.typing import UInt_NDArray
+from orangesoda.typing import NDArray_uint
+
+
+class DataUnit(BaseModel):
+    time: Optional[np.datetime64] = None
+    data: Optional[NDArray_uint] = None
+    bits: int = 8
+
+    def model_post_init(self, __context) -> None:
+        super().model_post_init(__context)
+
+    @model_validator(mode="after")
+    def _validate_dtype(self) -> "DataUnit":
+        container_bit_size = self.data.dtype.itemsize * 8
+        if self.bits > container_bit_size or self.bits <= container_bit_size // 2:
+            msg = f"bit size {self.bits} is inconsistent with dtype {self.data.dtype} bit length {container_bit_size}"
+            raise ValueError(msg)
+        return self
 
 
 class DataUnit:

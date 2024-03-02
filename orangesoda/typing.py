@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import AfterValidator, BeforeValidator, PlainSerializer
 
-UInt_NDArray = Union[
+NDArray_uint = Union[
     NDArray[np.uint8], NDArray[np.uint16], NDArray[np.uint32], NDArray[np.uint64]
 ]
 
