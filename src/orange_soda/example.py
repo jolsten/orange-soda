@@ -1,7 +1,9 @@
 import datetime
 
-from orange_soda.map import Map2D
-from orange_soda.satellite import ground_track
+from orange_soda.geometry.compute import ground_track
+from orange_soda.io.tle import TLEReader
+from orange_soda.matplotlib import Map
+from orange_soda.orbit import Propagator
 
 sample_tle = (
     "1 25544U 98067A   21066.03644377  .00001043  00000-0  28659-4 0  9998",
@@ -10,13 +12,18 @@ sample_tle = (
 
 
 def test():
-    map = Map2D()
+    map = Map()
+
+    tle_reader = TLEReader()
+    tle_reader.read("tests/data/25544.tle")
+    prop = Propagator(tle_reader.select(25544), method="epoch")
 
     t0 = datetime.datetime(2021, 3, 7, 0, 0, 0, tzinfo=datetime.UTC)
-    t1 = datetime.datetime(2021, 3, 7, 1, 0, 0, tzinfo=datetime.UTC)
+    t1 = datetime.datetime(2021, 3, 7, 0, 30, 0, tzinfo=datetime.UTC)
 
-    lats, lons = ground_track(sample_tle, t0, t1)
-    map.add_ground_track(lats, lons)
+    track = ground_track(prop, t0, t1)
+    map.add_line_string(track.geometry)
+    print(track.geometry.coordinates)
 
     map.figure.show()
 
