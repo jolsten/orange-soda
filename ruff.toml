@@ -38,7 +38,7 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.isort]
-known-first-party = ["orange_soda"]
+known-first-party = ["orange_soda", "thistle"]
 
 [format]
 quote-style = "double"

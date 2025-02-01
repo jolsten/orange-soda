@@ -3,7 +3,7 @@ from typing import Annotated, Any, Optional
 
 from pydantic import BaseModel, BeforeValidator, PlainSerializer
 
-from orange_soda.alpha5 import from_alpha5, to_alpha5
+from thistle.alpha5 import from_alpha5, to_alpha5
 
 
 def decode_satnum(satnum: Any) -> int:

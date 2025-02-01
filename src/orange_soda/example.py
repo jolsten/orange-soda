@@ -1,9 +1,8 @@
 import datetime
 
 from orange_soda.geometry.compute import ground_track
-from orange_soda.io.tle import TLEReader
 from orange_soda.matplotlib import Map
-from orange_soda.orbit import Propagator
+from thistle import Propagator, TLEReader
 
 sample_tle = (
     "1 25544U 98067A   21066.03644377  .00001043  00000-0  28659-4 0  9998",
@@ -19,13 +18,10 @@ def test():
     prop = Propagator(tle_reader.select(25544), method="epoch")
 
     t0 = datetime.datetime(2021, 3, 7, 0, 0, 0, tzinfo=datetime.UTC)
-    t1 = datetime.datetime(2021, 3, 7, 0, 30, 0, tzinfo=datetime.UTC)
+    t1 = t0 + datetime.timedelta(minutes=180)
 
     track = ground_track(prop, t0, t1)
     map.add_feature(track)
-    
-    for point in track.geometry.coordinates:
-        print(point.latitude, point.longitude)
 
     map.figure.show()
 

@@ -1,11 +1,10 @@
 import datetime
 
 from geojson_pydantic import Feature, LineString
-from sgp4.conveniences import sat_epoch_datetime
 from skyfield.api import EarthSatellite, load, wgs84
 
 from orange_soda.geometry.properties import Properties
-from orange_soda.orbit import Propagator
+from thistle import Propagator
 
 
 def _convert_to_utc(time: datetime.datetime) -> datetime.datetime:
@@ -52,7 +51,6 @@ def ground_track(
     coords = [
         (lon, lat) for lon, lat in zip(geo.longitude.degrees, geo.latitude.degrees)
     ]
-    print(coords)
     line_string = LineString(type="LineString", coordinates=coords)
     properties = Properties(
         satnum=satrec.satnum_str,
