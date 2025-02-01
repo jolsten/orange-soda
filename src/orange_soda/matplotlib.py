@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-from geojson_pydantic import Feature, LineString
+from geojson_pydantic import Feature, LineString, Point
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from mpl_toolkits.basemap import Basemap
@@ -20,7 +20,7 @@ class Map:
         meridians: Optional[int] = 60,
         limits: tuple[float, float, float, float] = (-90, 90, -180, 180),
     ) -> None:
-        self.figure = plt.figure(figsize=np.array([360, 180]) / 25, layout="tight")
+        self.figure = plt.figure(figsize=np.array([360, 180]) / 40, layout="tight")
         self.axes = self.figure.add_subplot(1, 1, 1)
         self.basemap = Basemap(
             ax=self.axes,
@@ -50,31 +50,35 @@ class Map:
         if meridians is not None:
             self.basemap.drawmeridians(np.arange(-180.0, 181.0, meridians))
 
-    # def _add_line_string(self, feature: Feature) -> None:
-    # for lat,
-
-    def add_line_string(
+    def _add_point(
         self,
-        line_string: LineString,
+        point: Point,
         color: str = "b",
         size: float = 3,
         alpha: float = 0.5,
     ) -> None:
-        x, y = [], []
-        for lon, lat in line_string.coordinates:
-            x.append(lon)
-            y.append(lat)
-        self.axes.plot(x, y, "-", color=color, ms=size, alpha=alpha)
+        lon, lat = self.basemap(point.longitude, point.latitude)
+        self.axes.plot([lon], [lat], color=color, ms=size, alpha=alpha)
 
-    # def add_ground_track(
-    #     self,
-    #     lats: list[float],
-    #     lons: list[float],
-    #     # color: str = "blue",
-    #     size: float = 3,
-    # ) -> None:
-    #     # Convert the lat/lons to coordinates in the figure axes using the basemap
-    #     pts = [self.basemap(lon, lat) for lon, lat in zip(lons, lats)]
-    #     xpts = [p[0] for p in pts]
-    #     ypts = [p[1] for p in pts]
-    #     self.axes.plot(xpts, ypts, "-", ms=size, alpha=0.5)
+    def _add_line_string(
+        self,
+        line_string: LineString,
+        color: str = "b",
+        size: float = 3,
+        alpha: float = 0.5
+    ) -> None:
+        lons, lats = [], []
+        for point in line_string.coordinates:
+            lon, lat = self.basemap(point.longitude, point.latitude)
+            lons.append(lon)
+            lats.append(lat)
+        self.axes.plot(lons, lats, "-", color=color, ms=size, alpha=alpha)
+
+    def add_feature(self, feature: Feature) -> None:
+        geometry = feature.geometry
+        match geometry.type:
+            case "LineString":
+                self._add_line_string(geometry)
+            case _:
+                msg = f"GeoJSON Feature type {feature.type!r} is not implemented"
+                raise TypeError(msg)

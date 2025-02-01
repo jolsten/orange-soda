@@ -22,8 +22,10 @@ def test():
     t1 = datetime.datetime(2021, 3, 7, 0, 30, 0, tzinfo=datetime.UTC)
 
     track = ground_track(prop, t0, t1)
-    map.add_line_string(track.geometry)
-    print(track.geometry.coordinates)
+    map.add_feature(track)
+    
+    for point in track.geometry.coordinates:
+        print(point.latitude, point.longitude)
 
     map.figure.show()
 
