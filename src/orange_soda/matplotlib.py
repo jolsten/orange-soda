@@ -1,8 +1,9 @@
 from typing import Literal, Optional
 
+import antimeridian
+import geojson
 import matplotlib.pyplot as plt
 import numpy as np
-from geojson_pydantic import Feature, LineString, Point
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from mpl_toolkits.basemap import Basemap
@@ -52,33 +53,58 @@ class Map:
 
     def _add_point(
         self,
-        point: Point,
+        point: geojson.Point,
         color: str = "b",
         size: float = 3,
         alpha: float = 0.5,
     ) -> None:
-        lon, lat = self.basemap(point.longitude, point.latitude)
+        lon, lat = point["coordinates"]
+        lon, lat = self.basemap(lon, lat)
         self.axes.plot([lon], [lat], color=color, ms=size, alpha=alpha)
 
     def _add_line_string(
         self,
-        line_string: LineString,
+        geometry: geojson.LineString,
         color: str = "b",
         size: float = 3,
-        alpha: float = 0.5
+        alpha: float = 0.5,
     ) -> None:
         lons, lats = [], []
-        for point in line_string.coordinates:
-            lon, lat = self.basemap(point.longitude, point.latitude)
+        for lon, lat in geometry["coordinates"]:
+            lon, lat = self.basemap(lon, lat)
             lons.append(lon)
             lats.append(lat)
         self.axes.plot(lons, lats, "-", color=color, ms=size, alpha=alpha)
 
-    def add_feature(self, feature: Feature) -> None:
+    def _add_multi_line_string(
+        self,
+        geometry: geojson.MultiLineString,
+        color: str = "b",
+        size: float = 3,
+        alpha: float = 0.5,
+    ) -> None:
+        for segment in geometry["coordinates"]:
+            lons, lats = [], []
+            for lon, lat in segment:
+                lon, lat = self.basemap(lon, lat)
+                lons.append(lon)
+                lats.append(lat)
+            self.axes.plot(lons, lats, "-", color=color, ms=size, alpha=alpha)
+
+    def add_feature(self, feature: geojson.Feature) -> None:
+        if not isinstance(feature, geojson.Feature):
+            msg = f"add_feature() expects argument of type 'Feature', not {feature.type!r}"
+            raise TypeError(msg)
+
+        # class_ = feature.__class__
+        feature = antimeridian.fix_geojson(feature)
+        # feature = class_(**feature)
         geometry = feature.geometry
-        match geometry.type:
+        match geometry["type"]:
             case "LineString":
                 self._add_line_string(geometry)
+            case "MultiLineString":
+                self._add_multi_line_string(geometry)
             case _:
                 msg = f"GeoJSON Feature type {feature.type!r} is not implemented"
                 raise TypeError(msg)

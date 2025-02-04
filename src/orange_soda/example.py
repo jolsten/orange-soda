@@ -17,10 +17,13 @@ def test():
     tle_reader.read("tests/data/25544.tle")
     prop = Propagator(tle_reader.select(25544), method="epoch")
 
-    t0 = datetime.datetime(2021, 3, 7, 0, 0, 0, tzinfo=datetime.UTC)
-    t1 = t0 + datetime.timedelta(minutes=180)
+    # from sgp4.conveniences import sat_epoch_datetime
+    # print([sat_epoch_datetime(sat) for sat in prop.satrecs])
 
-    track = ground_track(prop, t0, t1)
+    t0 = datetime.datetime(2021, 3, 7, 1, 0, 0, tzinfo=datetime.UTC)
+    t1 = t0 + datetime.timedelta(minutes=60)
+
+    track = ground_track(prop, t0, t1, step=60)
     map.add_feature(track)
 
     map.figure.show()

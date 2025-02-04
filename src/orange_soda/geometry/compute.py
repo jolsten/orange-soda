@@ -1,9 +1,8 @@
 import datetime
 
-from geojson_pydantic import Feature, LineString
+import geojson
 from skyfield.api import EarthSatellite, load, wgs84
 
-from orange_soda.geometry.properties import Properties
 from thistle import Propagator
 
 
@@ -37,7 +36,7 @@ def ground_track(
     start: datetime.datetime,
     stop: datetime.datetime,
     step: float = 10.0,
-) -> Feature:
+) -> geojson.Feature:
     # Generate and plot the ground track coordinates
     ts = load.timescale()
     satrec = propagator.find_satrec(start)
@@ -51,12 +50,14 @@ def ground_track(
     coords = [
         (lon, lat) for lon, lat in zip(geo.longitude.degrees, geo.latitude.degrees)
     ]
-    line_string = LineString(type="LineString", coordinates=coords)
-    properties = Properties(
-        satnum=satrec.satnum_str,
-        start=start,
-        stop=stop,
+    line_string = geojson.LineString(type="LineString", coordinates=coords)
+    properties = {
+        "satnum": satrec.satnum_str,
+        "start": start,
+        "stop": stop,
+    }
+    feature = geojson.Feature(
+        type="Feature", geometry=line_string, properties=properties
     )
-    feature = Feature(type="Feature", geometry=line_string, properties=properties)
 
     return feature
