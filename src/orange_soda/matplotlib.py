@@ -1,4 +1,5 @@
 from typing import Literal, Optional
+import warnings
 
 import antimeridian
 import geojson
@@ -53,58 +54,69 @@ class Map:
 
     def _add_point(
         self,
-        point: geojson.Point,
-        color: str = "b",
-        size: float = 3,
-        alpha: float = 0.5,
+        point: geojson.Point, *args, **kwargs,
     ) -> None:
-        lon, lat = point["coordinates"]
+        print(point)
+        lon, lat = point["coordinates"][0:2]
         lon, lat = self.basemap(lon, lat)
-        self.axes.plot([lon], [lat], color=color, ms=size, alpha=alpha)
+        self.axes.plot([lon], [lat], *args, **kwargs)
 
     def _add_line_string(
-        self,
-        geometry: geojson.LineString,
-        color: str = "b",
-        size: float = 3,
-        alpha: float = 0.5,
+        self, geometry: geojson.LineString, *args, **kwargs
     ) -> None:
         lons, lats = [], []
         for lon, lat in geometry["coordinates"]:
             lon, lat = self.basemap(lon, lat)
             lons.append(lon)
             lats.append(lat)
-        self.axes.plot(lons, lats, "-", color=color, ms=size, alpha=alpha)
+        self.axes.plot(lons, lats, *args, **kwargs)
 
-    def _add_multi_line_string(
-        self,
-        geometry: geojson.MultiLineString,
-        color: str = "b",
-        size: float = 3,
-        alpha: float = 0.5,
-    ) -> None:
-        for segment in geometry["coordinates"]:
-            lons, lats = [], []
-            for lon, lat in segment:
-                lon, lat = self.basemap(lon, lat)
-                lons.append(lon)
-                lats.append(lat)
-            self.axes.plot(lons, lats, "-", color=color, ms=size, alpha=alpha)
+    def _add_polygon(self, geometry: geojson.Polygon, *args, **kwargs) -> None:
+        lons, lats = [], []
+        for coords in geometry["coordinates"][0]:
+            lon, lat = self.basemap(coords[0], coords[1])
+            lons.append(lon)
+            lats.append(lat)
+        self.axes.fill(lons, lats, *args, **kwargs)
+        print(lons, lats)
 
-    def add_feature(self, feature: geojson.Feature) -> None:
+        if len(geometry["coordinates"]) > 1:
+            warnings.warn("Cannot un-fill inner shapes!")
+
+    def add_feature_collection(self, feature_collection: geojson.FeatureCollection, *args, **kwargs) -> None:
+        if not isinstance(feature_collection, geojson.FeatureCollection):
+            raise TypeError
+        
+        for feature in feature_collection["features"]:
+            print(feature)
+            self.add_feature(feature, *args, **kwargs)
+
+    def add_feature(self, feature: geojson.Feature, *args, **kwargs) -> None:
         if not isinstance(feature, geojson.Feature):
             msg = f"add_feature() expects argument of type 'Feature', not {feature.type!r}"
             raise TypeError(msg)
 
-        # class_ = feature.__class__
-        feature = antimeridian.fix_geojson(feature)
-        # feature = class_(**feature)
+        try:
+            feature = antimeridian.fix_geojson(feature)
+        except ValueError:
+            pass
+
         geometry = feature.geometry
         match geometry["type"]:
+            case "Point":
+                self._add_point(geometry, *args, **kwargs)
             case "LineString":
-                self._add_line_string(geometry)
+                self._add_line_string(geometry, *args, **kwargs)
             case "MultiLineString":
-                self._add_multi_line_string(geometry)
+                for segment in geometry["coordinates"]:
+                    tmp_feature = geojson.Feature(geometry=geojson.LineString(coordinates=segment))
+                    self.add_feature(tmp_feature, *args, **kwargs)
+            case "Polygon":
+                self._add_polygon(geometry, *args, **kwargs)
+            case "MultiPolygon":
+                for polygon in geometry["coordinates"]:
+                    tmp_feature = geojson.Feature(geometry=geojson.Polygon(coordinates=polygon))
+                    self.add_feature(tmp_feature)
             case _:
                 msg = f"GeoJSON Feature type {feature.type!r} is not implemented"
                 raise TypeError(msg)
