@@ -1,7 +1,7 @@
 import datetime
 
-from orange_soda.geometry import ground_site_visibility
-from orange_soda.geometry.compute import ground_site, ground_track
+from orange_soda.geometry.compute import ground_track
+from orange_soda.geometry.ground_site import GroundSite
 from orange_soda.matplotlib import Map
 from thistle import Propagator, TLEReader
 
@@ -25,10 +25,17 @@ def test():
     t1 = t0 + datetime.timedelta(minutes=60)
 
     track = ground_track(prop, t0, t1, step=60)
-    map.add_feature(track, 'b-')
+    map.add_feature(track, "b-")
 
-    gs_vis = ground_site(0, 30, target_alt=500_000)
-    map.add_feature_collection(gs_vis)
+    gs = GroundSite(lat=30, lon=-60, alt=0, name="Site A")
+    gs_point = gs.to_geojson()
+    gs_circle = gs.satellite_visibility_ring(500)
+    map.add_feature(gs_point, "b*", markersize=5)
+    print(gs_circle)
+    map.add_feature(gs_circle)
+
+    # gs_vis = ground_site(0, 30, target_alt=500_000)
+    # map.add_feature_collection(gs_vis)
 
     map.figure.show()
 

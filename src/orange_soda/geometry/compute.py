@@ -1,10 +1,9 @@
 import datetime
-from typing import Optional
 
 import geojson
 from skyfield.api import EarthSatellite, load, wgs84
 
-from orange_soda.geometry.ground_site_visibility import ground_facility_visibility_circle
+# from orange_soda.geometry.ground_site_visibility import ground_facility_visibility_circle
 from thistle import Propagator
 
 
@@ -64,20 +63,26 @@ def ground_track(
     return feature
 
 
-def ground_site(lon: float, lat: float, alt: Optional[float] = None, target_alt: Optional[float] = None, min_elevation: float = 0) -> geojson.FeatureCollection:
-    coords = [lat, lon, 0] if alt is None else [lat, lon, alt]
+# def ground_site(
+#     lon: float,
+#     lat: float,
+#     alt: Optional[float] = None,
+#     target_alt: Optional[float] = None,
+#     min_elevation: float = 0,
+# ) -> geojson.FeatureCollection:
+#     coords = [lat, lon, 0] if alt is None else [lat, lon, alt]
 
-    features = [
-        geojson.Feature(geometry=geojson.Point(coordinates=coords))
-    ]
+#     features = [geojson.Feature(geometry=geojson.Point(coordinates=coords))]
 
-    if target_alt is not None:
-        # print("coords =", coords)
-        # print("target_alt =", target_alt)
-        sat_radius = target_alt + 6378137
-        ring = ground_facility_visibility_circle(coords, sat_radius, azimuth_step=0.1, minimum_elevation=min_elevation)
-        # print("ring =", ring)
-        vis = geojson.Feature(geometry=geojson.Polygon([ring]))
-        features.append(vis)
-    feature_collection = geojson.FeatureCollection(features=features)
-    return feature_collection
+#     if target_alt is not None:
+#         # print("coords =", coords)
+#         # print("target_alt =", target_alt)
+#         sat_radius = target_alt + 6378137
+#         ring = ground_facility_visibility_circle(
+#             coords, sat_radius, azimuth_step=0.1, minimum_elevation=min_elevation
+#         )
+#         # print("ring =", ring)
+#         vis = geojson.Feature(geometry=geojson.Polygon([ring]))
+#         features.append(vis)
+#     feature_collection = geojson.FeatureCollection(features=features)
+#     return feature_collection

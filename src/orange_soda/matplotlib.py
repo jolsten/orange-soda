@@ -1,5 +1,5 @@
-from typing import Literal, Optional
 import warnings
+from typing import Literal, Optional
 
 import antimeridian
 import geojson
@@ -54,22 +54,22 @@ class Map:
 
     def _add_point(
         self,
-        point: geojson.Point, *args, **kwargs,
+        point: geojson.Point,
+        *args,
+        **kwargs,
     ) -> None:
-        print(point)
         lon, lat = point["coordinates"][0:2]
         lon, lat = self.basemap(lon, lat)
-        self.axes.plot([lon], [lat], *args, **kwargs)
+        self.axes.plot([lon], [lat], "b*", *args, **kwargs)
 
-    def _add_line_string(
-        self, geometry: geojson.LineString, *args, **kwargs
-    ) -> None:
-        lons, lats = [], []
-        for lon, lat in geometry["coordinates"]:
-            lon, lat = self.basemap(lon, lat)
-            lons.append(lon)
-            lats.append(lat)
-        self.axes.plot(lons, lats, *args, **kwargs)
+    def _add_line_string(self, geometry: geojson.LineString, *args, **kwargs) -> None:
+        x, y = [], []
+        for coords in geometry["coordinates"]:
+            lon, lat, *_ = coords
+            a, b = self.basemap(lon, lat)
+            x.append(a)
+            y.append(b)
+        self.axes.plot(x, y, *args, **kwargs)
 
     def _add_polygon(self, geometry: geojson.Polygon, *args, **kwargs) -> None:
         lons, lats = [], []
@@ -83,10 +83,12 @@ class Map:
         if len(geometry["coordinates"]) > 1:
             warnings.warn("Cannot un-fill inner shapes!")
 
-    def add_feature_collection(self, feature_collection: geojson.FeatureCollection, *args, **kwargs) -> None:
+    def add_feature_collection(
+        self, feature_collection: geojson.FeatureCollection, *args, **kwargs
+    ) -> None:
         if not isinstance(feature_collection, geojson.FeatureCollection):
             raise TypeError
-        
+
         for feature in feature_collection["features"]:
             print(feature)
             self.add_feature(feature, *args, **kwargs)
@@ -104,18 +106,24 @@ class Map:
         geometry = feature.geometry
         match geometry["type"]:
             case "Point":
+                print("add point")
                 self._add_point(geometry, *args, **kwargs)
             case "LineString":
+                print("add linestring")
                 self._add_line_string(geometry, *args, **kwargs)
             case "MultiLineString":
                 for segment in geometry["coordinates"]:
-                    tmp_feature = geojson.Feature(geometry=geojson.LineString(coordinates=segment))
+                    tmp_feature = geojson.Feature(
+                        geometry=geojson.LineString(coordinates=segment)
+                    )
                     self.add_feature(tmp_feature, *args, **kwargs)
             case "Polygon":
                 self._add_polygon(geometry, *args, **kwargs)
             case "MultiPolygon":
                 for polygon in geometry["coordinates"]:
-                    tmp_feature = geojson.Feature(geometry=geojson.Polygon(coordinates=polygon))
+                    tmp_feature = geojson.Feature(
+                        geometry=geojson.Polygon(coordinates=polygon)
+                    )
                     self.add_feature(tmp_feature)
             case _:
                 msg = f"GeoJSON Feature type {feature.type!r} is not implemented"
